@@ -4801,6 +4801,11 @@ void AI::MovePlayer(Ship &ship, Command &activeCommands)
 				command.SetTurn(TurnBackward(ship));
 		}
 
+		if(activeCommands.Has(Command::SLEFT))
+			command |= Command::SLEFT;
+		if(activeCommands.Has(Command::SRIGHT))
+			command |= Command::SRIGHT;
+
 		if(activeCommands.Has(Command::PRIMARY))
 		{
 			int index = 0;

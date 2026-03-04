@@ -39,6 +39,8 @@ public:
 	static const Command RIGHT;
 	static const Command AUTOSTEER;
 	static const Command BACK;
+	static const Command SLEFT;
+	static const Command SRIGHT;
 	static const Command MOUSE_TURNING_HOLD;
 	static const Command AIM_TURRET_HOLD;
 	static const Command PRIMARY;

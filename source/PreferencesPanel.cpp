@@ -589,6 +589,8 @@ void PreferencesPanel::DrawControls()
 		Command::LEFT,
 		Command::RIGHT,
 		Command::BACK,
+		Command::SLEFT,
+		Command::SRIGHT,
 		Command::AFTERBURNER,
 		Command::AUTOSTEER,
 		Command::LAND,

@@ -2588,7 +2588,15 @@ bool Ship::IsSteering() const
 	return isSteering;
 }
 
+bool Ship::IsStrafingLeft() const
+{
+	return isStrafingLeft;
+}
 
+bool Ship::IsStrafingRight() const
+{
+	return isStrafingRight;
+}
 
 double Ship::SteeringDirection() const
 {
@@ -3271,6 +3279,30 @@ double Ship::MaxReverseVelocity() const
 
 
 
+double Ship::StrafeLeftAcceleration() const
+{
+	double thrust = attributes.Get("turn") / 30;
+	return thrust / InertialMass() * (1. + attributes.Get("acceleration multiplier"));
+}
+
+
+
+double Ship::StrafeRightAcceleration() const
+{
+	double thrust = attributes.Get("turn") / 30;
+	return thrust / InertialMass() * (1. + attributes.Get("acceleration multiplier"));
+}
+
+
+
+double Ship::MaxStrafeVelocity() const
+{
+	double thrust = attributes.Get("turn") / 30;
+	return thrust / Drag();
+}
+
+
+
 double Ship::ThrustHeldFraction(Ship::ThrustKind kind) const
 {
 	constexpr double THRUST_HELD_FRAMES_RECIP = 1. / MAX_THRUST_HELD_FRAMES;
@@ -3515,6 +3547,8 @@ bool Ship::Carry(const shared_ptr<Ship> &ship)
 			ship->isThrusting = false;
 			ship->isReversing = false;
 			ship->isSteering = false;
+			ship->isStrafingLeft = false;
+			ship->isStrafingRight = false;
 			ship->commands.Clear();
 
 			// If this fighter collected anything in space, try to store it.
@@ -4066,6 +4100,8 @@ bool Ship::StepFlags()
 	isThrusting = false;
 	isReversing = false;
 	isSteering = false;
+	isStrafingLeft = false;
+	isStrafingRight = false;
 	steeringDirection = 0.;
 	if((!isSpecial && forget >= 1000) || !currentSystem)
 	{
@@ -5025,6 +5061,64 @@ void Ship::DoMovement(bool &isUsingAfterburner)
 				}
 			}
 		}
+
+		double strafeCommand = commands.Has(Command::SLEFT) - commands.Has(Command::SRIGHT);
+		double strafeThrust = 0.;
+		if(strafeCommand)
+		{
+			// Check if we are able to strafe.
+			double cost = attributes.Get("turning energy");
+			if(cost > 0. && energy < cost * fabs(strafeCommand))
+				strafeCommand = copysign(energy / cost, strafeCommand);
+
+			cost = attributes.Get("turning shields");
+			if(cost > 0. && shields < cost * fabs(strafeCommand))
+				strafeCommand = copysign(shields / cost, strafeCommand);
+
+			cost = attributes.Get("turning hull");
+			if(cost > 0. && hull < cost * fabs(strafeCommand))
+				strafeCommand = copysign(hull / cost, strafeCommand);
+
+			cost = attributes.Get("turning fuel");
+			if(cost > 0. && fuel < cost * fabs(strafeCommand))
+				strafeCommand = copysign(fuel / cost, strafeCommand);
+
+			cost = -attributes.Get("turning heat");
+			if(cost > 0. && heat < cost * fabs(strafeCommand))
+				strafeCommand = copysign(heat / cost, strafeCommand);
+
+			if(strafeCommand)
+			{
+				isStrafingLeft = (strafeCommand > 0.);
+				isStrafingRight = !isStrafingLeft;
+				strafeThrust = attributes.Get("turn");
+				IncrementThrusterHeld(isStrafingLeft ? ThrustKind::SLEFT : ThrustKind::SRIGHT);
+				if(strafeThrust)
+				{
+					double scale = fabs(strafeCommand);
+
+					shields -= scale * attributes.Get("turning shields");
+					hull -= scale * attributes.Get("turning hull");
+					energy -= scale * attributes.Get("turning energy");
+					fuel -= scale * attributes.Get("turning fuel");
+					heat += scale * attributes.Get("turning heat");
+					discharge += scale * attributes.Get("turning discharge");
+					corrosion += scale * attributes.Get("turning corrosion");
+					ionization += scale * attributes.Get("turning ion");
+					scrambling += scale * attributes.Get("turning scramble");
+					leakage += scale * attributes.Get("turning leakage");
+					burning += scale * attributes.Get("turning burn");
+					slowness += scale * attributes.Get("turning slowing");
+					disruption += scale * attributes.Get("turning disruption");
+					
+					Point facing = angle.Unit();
+					Point perpendicular  = Point(facing.Y(), -facing.X());
+
+					acceleration += perpendicular * strafeCommand * (isStrafingLeft ? StrafeLeftAcceleration() : StrafeRightAcceleration());
+				}
+			}
+		}
+
 		bool applyAfterburner = (commands.Has(Command::AFTERBURNER) || (thrustCommand > 0. && !thrust))
 				&& !CannotAct(Ship::ActionType::AFTERBURNER);
 		if(applyAfterburner)

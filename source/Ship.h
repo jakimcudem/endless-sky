@@ -118,6 +118,8 @@ public:
 		RIGHT = 1,
 		FORWARD = 2,
 		REVERSE = 3,
+		SLEFT = 4,
+		SRIGHT = 5
 	};
 
 	enum class CanFireResult {
@@ -322,6 +324,8 @@ public:
 	bool IsThrusting() const;
 	bool IsReversing() const;
 	bool IsSteering() const;
+	bool IsStrafingLeft() const;
+	bool IsStrafingRight() const;
 	// The direction that the ship is steering. If positive, the ship is steering right.
 	// If negative, the ship is steering left.
 	double SteeringDirection() const;
@@ -426,6 +430,9 @@ public:
 	double MaxVelocity(bool withAfterburner = false) const;
 	double ReverseAcceleration() const;
 	double MaxReverseVelocity() const;
+	double StrafeLeftAcceleration() const;
+	double StrafeRightAcceleration() const;
+	double MaxStrafeVelocity() const;
 	// These two values are the ship's current maximum acceleration and turn rate, accounting for the effects of slow.
 	double TrueAcceleration() const;
 	double TrueTurnRate() const;
@@ -643,6 +650,8 @@ private:
 	bool isThrusting = false;
 	bool isReversing = false;
 	bool isSteering = false;
+	bool isStrafingLeft = false;
+	bool isStrafingRight = false;
 	double steeringDirection = 0.;
 	bool neverDisabled = false;
 	bool isCapturable = true;
@@ -721,7 +730,7 @@ private:
 	// Acceleration can be created by engines, firing weapons, or weapon impacts.
 	Point acceleration;
 	// The amount of time in frames that an engine has been on for.
-	std::array<uint8_t, 4> thrustHeldFrames = {};
+	std::array<uint8_t, 6> thrustHeldFrames = {};
 
 	int crew = 0;
 	int pilotError = 0;
