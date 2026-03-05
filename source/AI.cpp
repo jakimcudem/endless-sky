@@ -4784,6 +4784,8 @@ void AI::MovePlayer(Ship &ship, Command &activeCommands)
 		AutoFire(ship, firingCommands, false, true);
 
 	const bool mouseTurning = activeCommands.Has(Command::MOUSE_TURNING_HOLD);
+	if(mouseTurning)
+		command |= Command::MOUSE_TURNING_HOLD;
 	if(mouseTurning && !ship.IsBoarding() && (!ship.IsReversing() || ship.Attributes().Get("reverse thrust")))
 		command.SetTurn(TurnToward(ship, mousePosition));
 
@@ -4801,7 +4803,16 @@ void AI::MovePlayer(Ship &ship, Command &activeCommands)
 				command.SetTurn(TurnBackward(ship));
 		}
 
-		if (!(activeCommands.Has(Command::SLEFT) && activeCommands.Has(Command::SRIGHT))) {
+		if (!(activeCommands.Has(Command::LEFT) && activeCommands.Has(Command::RIGHT)) && mouseTurning)
+		{
+			if(activeCommands.Has(Command::LEFT))
+				command |= Command::LEFT;
+			if(activeCommands.Has(Command::RIGHT))
+				command |= Command::RIGHT;
+		}
+
+		if (!(activeCommands.Has(Command::SLEFT) && activeCommands.Has(Command::SRIGHT)))
+		{
 			if(activeCommands.Has(Command::SLEFT))
 				command |= Command::SLEFT;
 			if(activeCommands.Has(Command::SRIGHT))

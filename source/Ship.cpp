@@ -5061,8 +5061,11 @@ void Ship::DoMovement(bool &isUsingAfterburner)
 				}
 			}
 		}
-
-		double strafeCommand = commands.Has(Command::SLEFT) - commands.Has(Command::SRIGHT);
+		// swap strafing keys with turning keys when mouse turning is on
+		double strafeCommand = commands.Has(Command::MOUSE_TURNING_HOLD) ?
+			commands.Has(Command::LEFT) - commands.Has(Command::RIGHT) :
+			commands.Has(Command::SLEFT) - commands.Has(Command::SRIGHT);
+		
 		double strafeThrust = 0.;
 		if(strafeCommand)
 		{
