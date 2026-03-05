@@ -2621,41 +2621,39 @@ bool AI::Stop(const Ship &ship, Command &command, double maxSpeed, const Point &
 	double stopTime = speed / ship.Acceleration();
 	double limit = .8 + .2 / (1. + stopTime * stopTime * stopTime * .001);
 
-	// If you have a reverse thruster, figure out whether using it is faster
+	// Figure out whether using reverse thrust is faster
 	// than turning around and using your main thruster.
-	if(ship.Attributes().Get("reverse thrust"))
+	// Figure out your stopping time using your main engine:
+	double degreesToTurn = TO_DEG * acos(min(1., max(-1., -velocity.Unit().Dot(angle.Unit()))));
+	double forwardTime = degreesToTurn / ship.TurnRate();
+	forwardTime += stopTime;
+
+	// Figure out your reverse thruster stopping time:
+	double reverseTime = (180. - degreesToTurn) / ship.TurnRate();
+	reverseTime += speed / ship.ReverseAcceleration();
+
+	// If you want to end up facing a specific direction, add the extra turning time.
+	if(direction)
 	{
-		// Figure out your stopping time using your main engine:
-		double degreesToTurn = TO_DEG * acos(min(1., max(-1., -velocity.Unit().Dot(angle.Unit()))));
-		double forwardTime = degreesToTurn / ship.TurnRate();
-		forwardTime += stopTime;
+		// Time to turn from facing backwards to target:
+		double degreesFromBackwards = TO_DEG * acos(min(1., max(-1., direction.Unit().Dot(-velocity.Unit()))));
+		double turnFromBackwardsTime = degreesFromBackwards / ship.TurnRate();
+		forwardTime += turnFromBackwardsTime;
 
-		// Figure out your reverse thruster stopping time:
-		double reverseTime = (180. - degreesToTurn) / ship.TurnRate();
-		reverseTime += speed / ship.ReverseAcceleration();
-
-		// If you want to end up facing a specific direction, add the extra turning time.
-		if(direction)
-		{
-			// Time to turn from facing backwards to target:
-			double degreesFromBackwards = TO_DEG * acos(min(1., max(-1., direction.Unit().Dot(-velocity.Unit()))));
-			double turnFromBackwardsTime = degreesFromBackwards / ship.TurnRate();
-			forwardTime += turnFromBackwardsTime;
-
-			// Time to turn from facing forwards to target:
-			double degreesFromForward = TO_DEG * acos(min(1., max(-1., direction.Unit().Dot(angle.Unit()))));
-			double turnFromForwardTime = degreesFromForward / ship.TurnRate();
-			reverseTime += turnFromForwardTime;
-		}
-
-		if(reverseTime < forwardTime)
-		{
-			command.SetTurn(TurnToward(ship, velocity));
-			if(velocity.Unit().Dot(angle.Unit()) > limit)
-				command |= Command::BACK;
-			return false;
-		}
+		// Time to turn from facing forwards to target:
+		double degreesFromForward = TO_DEG * acos(min(1., max(-1., direction.Unit().Dot(angle.Unit()))));
+		double turnFromForwardTime = degreesFromForward / ship.TurnRate();
+		reverseTime += turnFromForwardTime;
 	}
+
+	if(reverseTime < forwardTime)
+	{
+		command.SetTurn(TurnToward(ship, velocity));
+		if(velocity.Unit().Dot(angle.Unit()) > limit)
+			command |= Command::BACK;
+		return false;
+	}
+	
 
 	command.SetTurn(TurnBackward(ship));
 	if(velocity.Unit().Dot(angle.Unit()) < -limit)
@@ -4786,7 +4784,7 @@ void AI::MovePlayer(Ship &ship, Command &activeCommands)
 	const bool mouseTurning = activeCommands.Has(Command::MOUSE_TURNING_HOLD);
 	if(mouseTurning)
 		command |= Command::MOUSE_TURNING_HOLD;
-	if(mouseTurning && !ship.IsBoarding() && (!ship.IsReversing() || ship.Attributes().Get("reverse thrust")))
+	if(mouseTurning && !ship.IsBoarding())
 		command.SetTurn(TurnToward(ship, mousePosition));
 
 	if(activeCommands)
@@ -4797,10 +4795,8 @@ void AI::MovePlayer(Ship &ship, Command &activeCommands)
 			command.SetTurn(activeCommands.Has(Command::RIGHT) - activeCommands.Has(Command::LEFT));
 		if(activeCommands.Has(Command::BACK))
 		{
-			if(!activeCommands.Has(Command::FORWARD) && ship.Attributes().Get("reverse thrust"))
+			if(!activeCommands.Has(Command::FORWARD))
 				command |= Command::BACK;
-			else if(!activeCommands.Has(Command::RIGHT | Command::LEFT | Command::AUTOSTEER))
-				command.SetTurn(TurnBackward(ship));
 		}
 
 		if (!(activeCommands.Has(Command::LEFT) && activeCommands.Has(Command::RIGHT)) && mouseTurning)

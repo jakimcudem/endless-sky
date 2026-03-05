@@ -3266,7 +3266,7 @@ double Ship::MaxVelocity(bool withAfterburner) const
 
 double Ship::ReverseAcceleration() const
 {
-	return attributes.Get("reverse thrust") / InertialMass()
+	return (attributes.Get("reverse thrust") + attributes.Get("thrust") * 0.25) / InertialMass()
 		* (1. + attributes.Get("acceleration multiplier"));
 }
 
@@ -5005,57 +5005,70 @@ void Ship::DoMovement(bool &isUsingAfterburner)
 		if(thrustCommand)
 		{
 			// Check if we are able to apply this thrust.
-			double cost = attributes.Get((thrustCommand > 0.) ?
-				"thrusting energy" : "reverse thrusting energy");
+			double cost = thrustCommand > 0. ? attributes.Get("thrusting energy") : attributes.Get("reverse thrusting energy") + attributes.Get("thrusting energy") * 0.25;
 			if(cost > 0. && energy < cost * fabs(thrustCommand))
 				thrustCommand = copysign(energy / cost, thrustCommand);
 
-			cost = attributes.Get((thrustCommand > 0.) ?
-				"thrusting shields" : "reverse thrusting shields");
+			cost = thrustCommand > 0. ? attributes.Get("thrusting shields") : attributes.Get("reverse thrusting shields") + attributes.Get("thrusting shields") * 0.25;
 			if(cost > 0. && shields < cost * fabs(thrustCommand))
 				thrustCommand = copysign(shields / cost, thrustCommand);
-
-			cost = attributes.Get((thrustCommand > 0.) ?
-				"thrusting hull" : "reverse thrusting hull");
+			
+			cost = thrustCommand > 0. ? attributes.Get("thrusting hull") : attributes.Get("reverse thrusting hull") + attributes.Get("thrusting hull") * 0.25;
 			if(cost > 0. && hull < cost * fabs(thrustCommand))
 				thrustCommand = copysign(hull / cost, thrustCommand);
 
-			cost = attributes.Get((thrustCommand > 0.) ?
-				"thrusting fuel" : "reverse thrusting fuel");
+			cost = thrustCommand > 0. ? attributes.Get("thrusting fuel") : attributes.Get("reverse thrusting fuel") + attributes.Get("thrusting fuel") * 0.25;
 			if(cost > 0. && fuel < cost * fabs(thrustCommand))
 				thrustCommand = copysign(fuel / cost, thrustCommand);
 
-			cost = -attributes.Get((thrustCommand > 0.) ?
-				"thrusting heat" : "reverse thrusting heat");
+			cost = thrustCommand > 0. ? -attributes.Get("thrusting heat") : -(attributes.Get("reverse thrusting heat") + attributes.Get("thrusting heat") * 0.25);
 			if(cost > 0. && heat < cost * fabs(thrustCommand))
 				thrustCommand = copysign(heat / cost, thrustCommand);
 
 			if(thrustCommand)
 			{
-				// If a reverse thrust is commanded and the capability does not
-				// exist, ignore it (do not even slow under drag).
+				// Main thrusters provide a small amount of reverse thrust
 				isThrusting = (thrustCommand > 0.);
-				isReversing = !isThrusting && attributes.Get("reverse thrust");
-				thrust = attributes.Get(isThrusting ? "thrust" : "reverse thrust");
+				isReversing = !isThrusting;
+				if (isReversing) {
+					thrust = attributes.Get("reverse thrust") + attributes.Get("thrust") * 0.25;
+				} else if (isThrusting) {
+					thrust = attributes.Get("thrust");
+				}
+				
 				IncrementThrusterHeld(isReversing ? ThrustKind::REVERSE : ThrustKind::FORWARD);
 				if(thrust)
 				{
 					double scale = fabs(thrustCommand);
-
-					shields -= scale * attributes.Get(isThrusting ? "thrusting shields" : "reverse thrusting shields");
-					hull -= scale * attributes.Get(isThrusting ? "thrusting hull" : "reverse thrusting hull");
-					energy -= scale * attributes.Get(isThrusting ? "thrusting energy" : "reverse thrusting energy");
-					fuel -= scale * attributes.Get(isThrusting ? "thrusting fuel" : "reverse thrusting fuel");
-					heat += scale * attributes.Get(isThrusting ? "thrusting heat" : "reverse thrusting heat");
-					discharge += scale * attributes.Get(isThrusting ? "thrusting discharge" : "reverse thrusting discharge");
-					corrosion += scale * attributes.Get(isThrusting ? "thrusting corrosion" : "reverse thrusting corrosion");
-					ionization += scale * attributes.Get(isThrusting ? "thrusting ion" : "reverse thrusting ion");
-					scrambling += scale * attributes.Get(isThrusting ? "thrusting scramble" :
-						"reverse thrusting scramble");
-					burning += scale * attributes.Get(isThrusting ? "thrusting burn" : "reverse thrusting burn");
-					leakage += scale * attributes.Get(isThrusting ? "thrusting leakage" : "reverse thrusting leakage");
-					slowness += scale * attributes.Get(isThrusting ? "thrusting slowing" : "reverse thrusting slowing");
-					disruption += scale * attributes.Get(isThrusting ? "thrusting disruption" : "reverse thrusting disruption");
+					if (isThrusting) {
+						shields -= scale * attributes.Get("thrusting shields");
+						hull -= scale * attributes.Get("thrusting hull");
+						energy -= scale * attributes.Get("thrusting energy");
+						fuel -= scale * attributes.Get("thrusting fuel");
+						heat += scale * attributes.Get("thrusting heat");
+						discharge += scale * attributes.Get("thrusting discharge");
+						corrosion += scale * attributes.Get("thrusting corrosion");
+						ionization += scale * attributes.Get("thrusting ion");
+						scrambling += scale * attributes.Get("thrusting scramble");
+						burning += scale * attributes.Get("thrusting burn");
+						leakage += scale * attributes.Get("thrusting leakage");
+						slowness += scale * attributes.Get("thrusting slowing");
+						disruption += scale * attributes.Get("thrusting disruption");
+					} else {
+						shields -= scale * attributes.Get("thrusting shields") * 0.25 + attributes.Get("reverse thrusting shields");
+						hull -= scale * attributes.Get("thrusting hull") * 0.25 + attributes.Get("reverse thrusting hull");
+						energy -= scale * attributes.Get("thrusting energy") * 0.25 + attributes.Get("reverse thrusting energy");
+						fuel -= scale * attributes.Get("thrusting fuel") * 0.25 + attributes.Get("reverse thrusting fuel");
+						heat += scale * attributes.Get("thrusting heat") * 0.25 + attributes.Get("reverse thrusting heat");
+						discharge += scale * attributes.Get("thrusting discharge") * 0.25 + attributes.Get("reverse thrusting discharge");
+						corrosion += scale * attributes.Get("thrusting corrosion") * 0.25 + attributes.Get("reverse thrusting corrosion");
+						ionization += scale * attributes.Get("thrusting ion") * 0.25 + attributes.Get("reverse thrusting ion");
+						scrambling += scale * attributes.Get("thrusting scramble") * 0.25 + attributes.Get("reverse thrusting scramble");
+						burning += scale * attributes.Get("thrusting burn") * 0.25 + attributes.Get("reverse thrusting burn");
+						leakage += scale * attributes.Get("thrusting leakage") * 0.25 + attributes.Get("reverse thrusting leakage");
+						slowness += scale * attributes.Get("thrusting slowing") * 0.25 + attributes.Get("reverse thrusting slowing");
+						disruption += scale * attributes.Get("thrusting disruption") * 0.25 + attributes.Get("reverse thrusting disruption");
+					}
 
 					acceleration += angle.Unit() * thrustCommand * (isThrusting ? Acceleration() : ReverseAcceleration());
 				}
