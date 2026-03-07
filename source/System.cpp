@@ -26,12 +26,14 @@ this program. If not, see <https://www.gnu.org/licenses/>.
 #include "Minable.h"
 #include "Planet.h"
 #include "Random.h"
+#include "Tweaks.h"
 #include "image/SpriteSet.h"
 
 #include <algorithm>
 #include <cmath>
 
 using namespace std;
+using namespace tweaks;
 
 namespace {
 	// Dynamic economy parameters: how much of its production each system keeps
@@ -732,7 +734,7 @@ System::SolarGeneration System::GetSolarGeneration(const Point &shipPosition,
 	{
 		double power = GameData::SolarPower(stellar.GetSprite());
 		double wind = GameData::SolarWind(stellar.GetSprite());
-		double scale = .2 + 1.8 / (.001 * stellar.position.Distance(shipPosition) + 1);
+		double scale = .2 + 1.8 / (.001 * (1 / tweaks::ramscoopDistanceMultiplier) * stellar.position.Distance(shipPosition) + 1);
 		// Even if a ship has no ramscoop, it can harvest a tiny bit of fuel by flying close to the star,
 		// provided the system allows it. Both the system and the gamerule must allow the universal ramscoop
 		// in order for it to function.
@@ -752,8 +754,8 @@ double System::ExtraHyperArrivalDistance() const
 {
 	const optional<double> arrivalGamerule = GameData::GetGamerules().SystemArrivalMin();
 	if(arrivalGamerule.has_value())
-		return max(extraHyperArrivalDistance, *arrivalGamerule);
-	return extraHyperArrivalDistance;
+		return max(extraHyperArrivalDistance * tweaks::invisibleFenceMultiplier, *arrivalGamerule);
+	return extraHyperArrivalDistance * tweaks::invisibleFenceMultiplier;
 }
 
 
@@ -869,7 +871,7 @@ const WeightedList<double> &System::AsteroidBelts() const
 // Get the system's invisible fence radius.
 double System::InvisibleFenceRadius() const
 {
-	return invisibleFenceRadius;
+	return invisibleFenceRadius * tweaks::invisibleFenceMultiplier;
 }
 
 
@@ -1119,7 +1121,7 @@ void System::LoadObjectHelper(const DataNode &node, StellarObject &object, bool 
 		}
 	}
 	else if(key == "distance" && hasValue)
-		object.distance = node.Value(1);
+		object.distance = node.Value(1) * tweaks::systemDistanceMultiplier;
 	else if(key == "period" && hasValue)
 		object.speed = 360. / node.Value(1);
 	else if(key == "offset" && hasValue)
